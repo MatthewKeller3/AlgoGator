@@ -1,0 +1,201 @@
+<svg width="400" height="250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Deep space gradient -->
+    <linearGradient id="spaceBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0c0032;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#190061;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#240046;stop-opacity:1" />
+    </linearGradient>
+    <!-- Neon purple/blue -->
+    <linearGradient id="neonPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7209b7;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#b185db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f72585;stop-opacity:1" />
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="dataGlow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Digital grid -->
+    <pattern id="digitalGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+      <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#7209b7" stroke-width="0.3" opacity="0.3"/>
+      <circle cx="0" cy="0" r="1" fill="#b185db" opacity="0.4"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="250" fill="url(#spaceBg)"/>
+  <rect width="400" height="250" fill="url(#digitalGrid)"/>
+  
+  <!-- Futuristic network nodes -->
+  <g filter="url(#dataGlow)">
+    <!-- DEX 1 (left) -->
+    <g transform="translate(70, 90)">
+      <!-- Outer rings -->
+      <circle cx="0" cy="0" r="38" fill="none" stroke="#7209b7" stroke-width="1" opacity="0.3">
+        <animate attributeName="r" from="38" to="45" dur="2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" from="0.3" to="0" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="0" cy="0" r="30" fill="#0c0032" stroke="#7209b7" stroke-width="2"/>
+      <circle cx="0" cy="0" r="20" fill="#7209b7" opacity="0.3"/>
+      <!-- Rotating ring -->
+      <circle cx="25" cy="0" r="3" fill="#b185db">
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="3s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+    
+    <!-- DEX 2 (right) -->
+    <g transform="translate(330, 90)">
+      <circle cx="0" cy="0" r="38" fill="none" stroke="#f72585" stroke-width="1" opacity="0.3">
+        <animate attributeName="r" from="38" to="45" dur="2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" from="0.3" to="0" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="0" cy="0" r="30" fill="#0c0032" stroke="#f72585" stroke-width="2"/>
+      <circle cx="0" cy="0" r="20" fill="#f72585" opacity="0.3"/>
+      <circle cx="-25" cy="0" r="3" fill="#f72585">
+        <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="3s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+    
+    <!-- Central Aggregator -->
+    <g transform="translate(200, 165)">
+      <circle cx="0" cy="0" r="50" fill="none" stroke="url(#neonPurple)" stroke-width="2" opacity="0.2">
+        <animate attributeName="r" from="50" to="60" dur="2.5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" from="0.2" to="0" dur="2.5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="0" cy="0" r="40" fill="#240046" stroke="url(#neonPurple)" stroke-width="3"/>
+      <circle cx="0" cy="0" r="30" fill="none" stroke="#b185db" stroke-width="2" opacity="0.5"/>
+      <circle cx="0" cy="0" r="18" fill="url(#neonPurple)" opacity="0.5"/>
+    </g>
+    
+    <!-- Animated data streams -->
+    <path d="M 70 90 Q 135 130 200 155" stroke="#7209b7" stroke-width="3" fill="none" opacity="0.6" stroke-dasharray="10,5">
+      <animate attributeName="stroke-dashoffset" from="0" to="15" dur="0.8s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 330 90 Q 265 130 200 155" stroke="#f72585" stroke-width="3" fill="none" opacity="0.6" stroke-dasharray="10,5">
+      <animate attributeName="stroke-dashoffset" from="0" to="15" dur="0.8s" repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Data particles -->
+    <circle cx="100" cy="110" r="2" fill="#b185db">
+      <animateMotion path="M 0 0 Q 65 40 130 65" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="300" cy="110" r="2" fill="#f72585">
+      <animateMotion path="M 0 0 Q -65 40 -130 65" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Robotic Alligator (Enhanced) -->
+  <g transform="translate(200, 205)" filter="url(#dataGlow)">
+    <!-- Powerful Tail (much larger) -->
+    <path d="M 70 0 Q 95 -3 115 -5 Q 125 -6 130 0 Q 125 6 115 5 Q 95 3 70 0 Z" fill="#240046" stroke="#7209b7" stroke-width="2"/>
+    <path d="M 70 -5 L 115 -8 M 70 5 L 115 8" stroke="#7209b7" stroke-width="0.5" opacity="0.4"/>
+    <!-- Tail ridges -->
+    <path d="M 80 -6 L 82 -10 L 84 -6" fill="#7209b7" opacity="0.6"/>
+    <path d="M 90 -7 L 92 -11 L 94 -7" fill="#7209b7" opacity="0.6"/>
+    <path d="M 100 -7 L 102 -11 L 104 -7" fill="#7209b7" opacity="0.6"/>
+    <path d="M 110 -8 L 112 -12 L 114 -8" fill="#7209b7" opacity="0.6"/>
+    <path d="M 120 -6 L 122 -10 L 124 -6" fill="#7209b7" opacity="0.6"/>
+    
+    <!-- Main Body (elongated) -->
+    <ellipse cx="0" cy="0" rx="65" ry="16" fill="#240046" stroke="url(#neonPurple)" stroke-width="2"/>
+    <ellipse cx="0" cy="0" rx="60" ry="12" fill="#190061" opacity="0.5"/>
+    
+    <!-- Back ridges/scales -->
+    <path d="M -55 -8 L -53 -14 L -51 -8" fill="#7209b7" opacity="0.6"/>
+    <path d="M -40 -9 L -38 -15 L -36 -9" fill="#7209b7" opacity="0.6"/>
+    <path d="M -25 -10 L -23 -16 L -21 -10" fill="#7209b7" opacity="0.6"/>
+    <path d="M -10 -10 L -8 -16 L -6 -10" fill="#7209b7" opacity="0.6"/>
+    <path d="M 5 -10 L 7 -16 L 9 -10" fill="#7209b7" opacity="0.6"/>
+    <path d="M 20 -10 L 22 -16 L 24 -10" fill="#7209b7" opacity="0.6"/>
+    <path d="M 35 -10 L 37 -16 L 39 -10" fill="#7209b7" opacity="0.6"/>
+    <path d="M 50 -9 L 52 -14 L 54 -9" fill="#7209b7" opacity="0.6"/>
+    
+    <!-- Longer, more menacing head/snout -->
+    <ellipse cx="-75" cy="1" rx="18" ry="10" fill="#240046" stroke="url(#neonPurple)" stroke-width="2"/>
+    <ellipse cx="-75" cy="1" rx="14" ry="7" fill="#190061" opacity="0.5"/>
+    
+    <!-- Extended snout -->
+    <path d="M -93 -4 L -110 -3 L -112 1 L -110 5 L -93 4 Z" fill="#240046" stroke="#7209b7" stroke-width="2"/>
+    <!-- Nostrils -->
+    <ellipse cx="-108" cy="-1" rx="2" ry="1.5" fill="#0c0032"/>
+    <ellipse cx="-108" cy="2" rx="2" ry="1.5" fill="#0c0032"/>
+    
+    <!-- Eyes on top of head (alligator style) -->
+    <ellipse cx="-82" cy="-7" rx="5" ry="4" fill="#0c0032" stroke="#7209b7" stroke-width="1"/>
+    <circle cx="-82" cy="-7" r="3" fill="#f72585" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <ellipse cx="-70" cy="-7" rx="5" ry="4" fill="#0c0032" stroke="#7209b7" stroke-width="1"/>
+    <circle cx="-70" cy="-7" r="3" fill="#f72585" opacity="0.9">
+      <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    
+    <!-- Jaw line -->
+    <path d="M -93 4 Q -100 6 -108 5" stroke="#b185db" stroke-width="1" fill="none" opacity="0.6"/>
+    
+    <!-- Multiple sharp teeth -->
+    <path d="M -105 -2 L -105 -5" stroke="#b185db" stroke-width="1.5" opacity="0.8"/>
+    <path d="M -100 -2 L -100 -5" stroke="#b185db" stroke-width="1.5" opacity="0.8"/>
+    <path d="M -95 -2 L -95 -6" stroke="#b185db" stroke-width="1.5" opacity="0.8"/>
+    <path d="M -105 4 L -105 7" stroke="#b185db" stroke-width="1.5" opacity="0.8"/>
+    <path d="M -100 4 L -100 7" stroke="#b185db" stroke-width="1.5" opacity="0.8"/>
+    <path d="M -95 4 L -95 8" stroke="#b185db" stroke-width="1.5" opacity="0.8"/>
+    
+    <!-- Front legs (shorter, wider) -->
+    <g>
+      <rect x="-55" y="12" width="10" height="14" fill="#240046" stroke="#7209b7" stroke-width="1.5" rx="2"/>
+      <circle cx="-50" cy="17" r="3" fill="#7209b7" opacity="0.4"/>
+      <!-- Clawed foot -->
+      <path d="M -58 26 L -55 30 M -52 26 L -50 31 M -48 26 L -47 30" stroke="#b185db" stroke-width="1" opacity="0.7"/>
+    </g>
+    <g>
+      <rect x="-30" y="12" width="10" height="14" fill="#240046" stroke="#7209b7" stroke-width="1.5" rx="2"/>
+      <circle cx="-25" cy="17" r="3" fill="#7209b7" opacity="0.4"/>
+      <path d="M -33 26 L -30 30 M -27 26 L -25 31 M -23 26 L -22 30" stroke="#b185db" stroke-width="1" opacity="0.7"/>
+    </g>
+    
+    <!-- Back legs (more powerful) -->
+    <g>
+      <rect x="35" y="12" width="12" height="16" fill="#240046" stroke="#7209b7" stroke-width="1.5" rx="2"/>
+      <circle cx="41" cy="18" r="4" fill="#7209b7" opacity="0.4"/>
+      <path d="M 33 28 L 36 32 M 39 28 L 41 33 M 45 28 L 47 32" stroke="#b185db" stroke-width="1.2" opacity="0.7"/>
+    </g>
+    <g>
+      <rect x="55" y="12" width="12" height="16" fill="#240046" stroke="#7209b7" stroke-width="1.5" rx="2"/>
+      <circle cx="61" cy="18" r="4" fill="#7209b7" opacity="0.4"/>
+      <path d="M 53 28 L 56 32 M 59 28 L 61 33 M 65 28 L 67 32" stroke="#b185db" stroke-width="1.2" opacity="0.7"/>
+    </g>
+    
+    <!-- Armor/scale pattern on body -->
+    <line x1="-50" y1="0" x2="60" y2="0" stroke="#b185db" stroke-width="0.5" opacity="0.4"/>
+    <line x1="-45" y1="-6" x2="55" y2="-6" stroke="#b185db" stroke-width="0.5" opacity="0.3"/>
+    <line x1="-45" y1="6" x2="55" y2="6" stroke="#b185db" stroke-width="0.5" opacity="0.3"/>
+    
+    <!-- Pulsing data core -->
+    <circle cx="0" cy="0" r="7" fill="url(#neonPurple)" opacity="0.5">
+      <animate attributeName="opacity" values="0.5;0.8;0.5" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="0" cy="0" r="4" fill="#f72585" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Floating data points -->
+  <circle cx="40" cy="50" r="1.5" fill="#7209b7" opacity="0.6">
+    <animate attributeName="cy" from="50" to="220" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.6" to="0" dur="5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="360" cy="70" r="1.5" fill="#f72585" opacity="0.6">
+    <animate attributeName="cy" from="70" to="230" dur="4.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.6" to="0" dur="4.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="120" cy="40" r="1" fill="#b185db" opacity="0.5">
+    <animate attributeName="cy" from="40" to="210" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.5" to="0" dur="4s" repeatCount="indefinite"/>
+  </circle>
+</svg>

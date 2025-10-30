@@ -68,18 +68,38 @@ export const loadAccount = async (dispatch) => {
 // LOAD CONTRACTS
 export const loadTokens = async (provider, chainId, dispatch) => {
   try {
-    const kelchainAddress = getChecksumAddress(config[chainId].tokens.kelchain.address)
+    console.log('[loadTokens] ChainId:', chainId)
+    console.log('[loadTokens] Config available for chains:', Object.keys(config))
+    
+    if (!config[chainId]) {
+      throw new Error(`No configuration found for chainId: ${chainId}. Available chains: ${Object.keys(config).join(', ')}`)
+    }
+    
+    if (!config[chainId].tokens) {
+      throw new Error(`No tokens configured for chainId: ${chainId}`)
+    }
+    
+    console.log('[loadTokens] Loading tokens:', config[chainId].tokens)
+    
     const usdAddress = getChecksumAddress(config[chainId].tokens.usd.address)
+    const ethAddress = getChecksumAddress(config[chainId].tokens.eth.address)
+    const opAddress = getChecksumAddress(config[chainId].tokens.op.address)
     
-    const kelchain = new ethers.Contract(kelchainAddress, TOKEN_ABI, provider)
+    console.log('[loadTokens] Token addresses:', { usdAddress, ethAddress, opAddress })
+    
     const usd = new ethers.Contract(usdAddress, TOKEN_ABI, provider)
+    const eth = new ethers.Contract(ethAddress, TOKEN_ABI, provider)
+    const op = new ethers.Contract(opAddress, TOKEN_ABI, provider)
 
-    dispatch(setContracts([kelchain, usd]))
-    dispatch(setSymbols([await kelchain.symbol(), await usd.symbol()]))
+    const symbols = [await usd.symbol(), await eth.symbol(), await op.symbol()]
+    console.log('[loadTokens] Token symbols:', symbols)
+
+    dispatch(setContracts([usd, eth, op]))
+    dispatch(setSymbols(symbols))
     
-    return { kelchain, usd }
+    return { usd, eth, op }
   } catch (error) {
-    console.error('Error loading tokens:', error)
+    console.error('[loadTokens] Error loading tokens:', error)
     throw error
   }
 }
@@ -235,26 +255,52 @@ export const loadBalances = async (amm, tokens, account, dispatch) => {
 
 // ------------------------------------------------------------------------------
 // ADD LIQUDITY
-export const addLiquidity = async (provider, amm, tokens, amounts, dispatch) => {
+export const addLiquidity = async (provider, ammState, tokens, amounts, dispatch) => {
   try {
     dispatch(depositRequest())
 
     const signer = await provider.getSigner()
+    
+    // Get the selected AMM contract (default to amm1 if not specified)
+    const selectedAMM = ammState.selected || 'amm1'
+    const ammContract = ammState[selectedAMM]?.contract
+    const ammAddress = ammState[selectedAMM]?.address
+    
+    if (!ammContract || !ammAddress) {
+      throw new Error(`${selectedAMM.toUpperCase()} contract not found`)
+    }
+
+    console.log(`Adding liquidity to ${selectedAMM.toUpperCase()} at ${ammAddress}`)
+
+    // Determine which tokens to use based on selected AMM
+    // AMM1: ETH (tokens[1]) / USD (tokens[0])
+    // AMM2: OP (tokens[2]) / USD (tokens[0])
+    const token1Index = selectedAMM === 'amm1' ? 1 : 2
+    const token2Index = 0 // USD for both
 
     let transaction
 
-    transaction = await tokens[0].connect(signer).approve(amm.amm1.address, amounts[0])
+    // Approve token transfers
+    console.log(`Approving token at index ${token1Index}...`)
+    transaction = await tokens[token1Index].connect(signer).approve(ammAddress, amounts[0])
     await transaction.wait()
 
-    transaction = await tokens[1].connect(signer).approve(amm.amm1.address, amounts[1])
+    console.log(`Approving token at index ${token2Index}...`)
+    transaction = await tokens[token2Index].connect(signer).approve(ammAddress, amounts[1])
     await transaction.wait()
 
-    transaction = await amm.amm1.connect(signer).addLiquidity(amounts[0], amounts[1])
-    await transaction.wait()
+    // Add liquidity
+    console.log('Adding liquidity...')
+    transaction = await ammContract.connect(signer).addLiquidity(amounts[0], amounts[1])
+    const receipt = await transaction.wait()
+    console.log('Liquidity added successfully!')
 
     dispatch(depositSuccess(transaction.hash))
+    return receipt
   } catch (error) {
+    console.error('addLiquidity error:', error)
     dispatch(depositFail())
+    throw error
   }
 }
 
@@ -411,10 +457,14 @@ export const swap = async (provider, amm, token, symbol, amount, dispatch) => {
         gasOptions
       })
 
+      // Get token1 and token2 addresses from AMM to determine which function to call
+      const ammToken1Address = await ammContract.token1()
+      const isToken1Swap = token.address.toLowerCase() === ammToken1Address.toLowerCase()
+      
       // Estimate gas first
       let estimatedGas
       try {
-        if (symbol === "KelChain") {
+        if (isToken1Swap) {
           estimatedGas = await ammContract.estimateGas.swapToken1(amount, gasOptions)
           console.log('Estimated gas for swapToken1:', estimatedGas.toString())
         } else {
@@ -431,11 +481,11 @@ export const swap = async (provider, amm, token, symbol, amount, dispatch) => {
 
       // Execute the swap with better error handling
       try {
-        if (symbol === "KelChain") {
-          console.log('Swapping KelChain (token1)')
+        if (isToken1Swap) {
+          console.log(`Swapping ${symbol} (token1)`)
           transaction = await ammContract.connect(signer).swapToken1(amount, gasOptions)
         } else {
-          console.log('Swapping USD (token2)')
+          console.log(`Swapping ${symbol} (token2)`)
           transaction = await ammContract.connect(signer).swapToken2(amount, gasOptions)
         }
         
@@ -541,12 +591,17 @@ export const loadAllSwaps = async (provider, amm, dispatch) => {
 // ------------------------------------------------------------------------------
 // AGGREGATOR FUNCTIONS
 
-export const compareAMMRates = async (amm1, amm2, inputToken, amount) => {
+export const compareAMMRates = async (amm1, amm2, inputToken, outputToken, amount) => {
   try {
     let rate1, rate2
     const parsedAmount = ethers.utils.parseUnits(amount.toString(), 'ether')
     
-    if (inputToken === 'KelChain') {
+    // Check if input token is token1 in both AMMs
+    // Both AMMs should have same token configuration for comparison
+    const amm1Token1 = await amm1.token1()
+    const isToken1Swap = inputToken.address.toLowerCase() === amm1Token1.toLowerCase()
+    
+    if (isToken1Swap) {
       rate1 = await amm1.calculateToken1Swap(parsedAmount)
       rate2 = await amm2.calculateToken1Swap(parsedAmount)
     } else {
@@ -566,9 +621,9 @@ export const compareAMMRates = async (amm1, amm2, inputToken, amount) => {
   }
 }
 
-export const swapViaAggregator = async (provider, aggregator, inputToken, amount, dispatch) => {
+export const swapViaAggregator = async (provider, aggregator, inputTokenContract, inputTokenSymbol, amount, minAmountOut, slippageTolerance, dispatch) => {
   try {
-    if (!provider || !aggregator || !inputToken || !amount) {
+    if (!provider || !aggregator || !inputTokenContract || !amount) {
       throw new Error('Missing required parameters for swap')
     }
     
@@ -578,12 +633,11 @@ export const swapViaAggregator = async (provider, aggregator, inputToken, amount
     const signerAddress = await signer.getAddress()
     
     console.log(`[swapViaAggregator] Initiating swap for ${signerAddress}`)
-    console.log(`[swapViaAggregator] Token: ${inputToken}, Amount: ${amount.toString()}`)
+    console.log(`[swapViaAggregator] Token: ${inputTokenSymbol}, Amount: ${amount.toString()}`)
+    console.log(`[swapViaAggregator] Min Amount Out: ${minAmountOut.toString()}, Slippage: ${slippageTolerance}%`)
     
     // Check token approval first
-    const tokenContract = inputToken === 'KelChain' 
-      ? new ethers.Contract(config[31337].tokens.kelchain.address, TOKEN_ABI, signer)
-      : new ethers.Contract(config[31337].tokens.usd.address, TOKEN_ABI, signer)
+    const tokenContract = inputTokenContract.connect(signer)
     
     console.log('[swapViaAggregator] Checking token approval...')
     let allowance = await tokenContract.allowance(signerAddress, aggregator.address)
@@ -628,17 +682,27 @@ export const swapViaAggregator = async (provider, aggregator, inputToken, amount
     console.log('[swapViaAggregator] Sending swap transaction...')
     
     try {
-      // Get the function signature based on token
-      const functionName = inputToken === 'KelChain' ? 'swapToken1ForToken2' : 'swapToken2ForToken1'
-      console.log(`[swapViaAggregator] Calling ${functionName} with amount:`, amount.toString())
+      // Get the function signature based on which token is being swapped
+      // Check if input token is token1 in the aggregator
+      const aggregatorToken1 = await aggregator.token1()
+      const isToken1Swap = inputTokenContract.address.toLowerCase() === aggregatorToken1.toLowerCase()
+      const functionName = isToken1Swap ? 'swapToken1ForToken2' : 'swapToken2ForToken1'
+      console.log(`[swapViaAggregator] Calling ${functionName} for ${inputTokenSymbol} with amount:`, amount.toString())
+      
+      // Calculate deadline (10 minutes from now)
+      const currentBlock = await provider.getBlock('latest')
+      const deadline = currentBlock.timestamp + 600 // 10 minutes
+      
+      console.log('[swapViaAggregator] Transaction parameters:', {
+        amount: amount.toString(),
+        minAmountOut: minAmountOut.toString(),
+        deadline: deadline
+      })
       
       // Estimate gas with a buffer
       let gasEstimate
       try {
-        // Try with a buffer to avoid out of gas errors
-        gasEstimate = await aggregator.estimateGas[functionName](amount, {
-          gasLimit: 300000 // Initial gas limit for estimation
-        })
+        gasEstimate = await aggregator.estimateGas[functionName](amount, minAmountOut, deadline)
         console.log('[swapViaAggregator] Gas estimate:', gasEstimate.toString())
         // Add 20% buffer to the gas estimate
         gasEstimate = gasEstimate.mul(120).div(100)
@@ -660,7 +724,7 @@ export const swapViaAggregator = async (provider, aggregator, inputToken, amount
         gasPrice: txOptions.gasPrice?.toString()
       })
       
-      const transaction = await aggregator.connect(signer)[functionName](amount, txOptions)
+      const transaction = await aggregator.connect(signer)[functionName](amount, minAmountOut, deadline, txOptions)
       console.log('[swapViaAggregator] Transaction hash:', transaction.hash)
       
       // Wait for the transaction to be mined

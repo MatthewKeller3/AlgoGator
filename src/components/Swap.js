@@ -10,9 +10,11 @@ import DropdownButton from 'react-bootstrap/DropdownButton';
 import Button from 'react-bootstrap/Button';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
+import BSAlert from 'react-bootstrap/Alert';
 import { ethers } from 'ethers'
 
 import Alert from './Alert'
+import EmptyPoolWarning from './EmptyPoolWarning'
 
 import {
   swap,
@@ -169,7 +171,7 @@ const Swap = () => {
       }
 
       // Determine token indices based on selected tokens
-      const token1Symbol = symbols?.[0] || 'KEL';
+      const token1Symbol = symbols?.[0] || 'Token1';
       const isToken1Input = inputToken === token1Symbol;
       
       const amount = ethers.utils.parseUnits(value, 'ether');
@@ -215,7 +217,8 @@ const Swap = () => {
       const _inputAmount = ethers.utils.parseUnits(inputAmount, 'ether')
       
       // Get the correct token contract based on input
-      const tokenContract = inputToken === "KelChain" ? tokens[0] : tokens[1]
+      const inputTokenIndex = symbols.indexOf(inputToken)
+      const tokenContract = tokens[inputTokenIndex]
       
       if (!tokenContract) {
         throw new Error('Token contract not loaded. Please try refreshing the page.')
@@ -259,7 +262,7 @@ const Swap = () => {
         return;
       }
 
-      if (inputToken === 'KelChain') {
+      if (inputToken === symbols[0]) {
         const [balance1, balance2] = await Promise.all([
           amm.token1Balance(),
           amm.token2Balance()
@@ -290,13 +293,23 @@ const Swap = () => {
     }
   }, [inputToken, outputToken, amm, getPrice]);
 
-  // Get token symbols with fallbacks
-  const token1Symbol = symbols?.[0] || 'KEL';
-  const token2Symbol = symbols?.[1] || 'USD';
+  // Get all token symbols with fallbacks
+  const token1Symbol = symbols?.[0] || 'Token1';
+  const token2Symbol = symbols?.[1] || 'Token2';
+  const token3Symbol = symbols?.[2] || 'Token3';
 
   // Get token balances with fallbacks
   const token1Balance = balances?.[0] || '0';
   const token2Balance = balances?.[1] || '0';
+  const token3Balance = balances?.[2] || '0';
+  
+  // Get balance for selected input token
+  const getTokenBalance = (tokenSymbol) => {
+    if (tokenSymbol === token1Symbol) return token1Balance;
+    if (tokenSymbol === token2Symbol) return token2Balance;
+    if (tokenSymbol === token3Symbol) return token3Balance;
+    return '0';
+  };
 
   return (
     <div>
@@ -307,39 +320,40 @@ const Swap = () => {
               <div className='d-flex justify-content-between'>
                 <Form.Label><strong>Input:</strong></Form.Label>
                 <Form.Text muted>
-                  Balance: {inputToken === token1Symbol ? token1Balance : token2Balance}
+                  Balance: {getTokenBalance(inputToken)}
                 </Form.Text>
               </div>
               <InputGroup>
                 <Form.Control
                   type="number"
-                  placeholder="0.0"
-                  min="0.0"
-                  step="any"
+                  placeholder="0"
+                  min="0"
+                  step="0.000001"
                   value={inputAmount === 0 ? '' : inputAmount}
                   onChange={inputHandler}
+                  onFocus={(e) => e.target.value === '0' && setInputAmount(0)}
+                  onBlur={(e) => !e.target.value && setInputAmount(0)}
                   disabled={!inputToken || !outputToken}
                 />
                 <DropdownButton
                   variant="outline-secondary"
                   title={inputToken || 'Select Token'}
                 >
-                  <Dropdown.Item onClick={() => {
-                    setInputToken(token1Symbol);
-                    setOutputToken(token2Symbol);
-                    setInputAmount('0');
-                    setOutputAmount('0');
-                  }}>
-                    {token1Symbol}
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => {
-                    setInputToken(token2Symbol);
-                    setOutputToken(token1Symbol);
-                    setInputAmount('0');
-                    setOutputAmount('0');
-                  }}>
-                    {token2Symbol}
-                  </Dropdown.Item>
+                  {symbols && symbols.map((symbol, index) => (
+                    <Dropdown.Item 
+                      key={index}
+                      onClick={() => {
+                        setInputToken(symbol);
+                        // Set output to first different token
+                        const otherSymbol = symbols.find(s => s !== symbol);
+                        setOutputToken(otherSymbol || '');
+                        setInputAmount('0');
+                        setOutputAmount('0');
+                      }}
+                    >
+                      {symbol}
+                    </Dropdown.Item>
+                  ))}
                 </DropdownButton>
               </InputGroup>
             </Row>
@@ -348,13 +362,13 @@ const Swap = () => {
               <div className='d-flex justify-content-between'>
                 <Form.Label><strong>Output:</strong></Form.Label>
                 <Form.Text muted>
-                  Balance: {outputToken === token1Symbol ? token1Balance : token2Balance}
+                  Balance: {getTokenBalance(outputToken)}
                 </Form.Text>
               </div>
               <InputGroup>
                 <Form.Control
                   type="number"
-                  placeholder="0.0"
+                  placeholder="0"
                   value={outputAmount === 0 ? '' : outputAmount}
                   disabled
                 />
@@ -363,43 +377,83 @@ const Swap = () => {
                   title={outputToken || 'Select Token'}
                   disabled={!inputToken}
                 >
-                  <Dropdown.Item 
-                    onClick={() => {
-                      setOutputToken(token1Symbol);
-                      setInputToken(token2Symbol);
-                      setInputAmount('0');
-                      setOutputAmount('0');
-                    }}
-                    disabled={inputToken === token1Symbol}
-                  >
-                    {token1Symbol}
-                  </Dropdown.Item>
-                  <Dropdown.Item 
-                    onClick={() => {
-                      setOutputToken(token2Symbol);
-                      setInputToken(token1Symbol);
-                      setInputAmount('0');
-                      setOutputAmount('0');
-                    }}
-                    disabled={inputToken === token2Symbol}
-                  >
-                    {token2Symbol}
-                  </Dropdown.Item>
+                  {symbols && symbols.map((symbol, index) => (
+                    <Dropdown.Item 
+                      key={index}
+                      onClick={() => {
+                        setOutputToken(symbol);
+                        setInputAmount('0');
+                        setOutputAmount('0');
+                      }}
+                      disabled={inputToken === symbol}
+                    >
+                      {symbol}
+                    </Dropdown.Item>
+                  ))}
                 </DropdownButton>
               </InputGroup>
             </Row>
 
             <Row className='my-3'>
-              {isSwapping ? (
-                <Spinner animation="border" style={{ display: 'block', margin: '0 auto' }} />
-              ) : (
-                <Button type='submit' disabled={!inputToken || !outputToken || !inputAmount || parseFloat(inputAmount) <= 0}>
-                  Swap
-                </Button>
-              )}
+              <Button 
+                type='submit' 
+                disabled={isSwapping || !inputToken || !outputToken || !inputAmount || parseFloat(inputAmount) <= 0}
+                style={{ width: '100%' }}
+              >
+                {isSwapping ? (
+                  <>
+                    <Spinner
+                      as="span"
+                      animation="border"
+                      size="sm"
+                      role="status"
+                      aria-hidden="true"
+                      className="me-2"
+                    />
+                    Swapping...
+                  </>
+                ) : 'Swap'}
+              </Button>
               <Form.Text muted className='mt-2 text-center'>
                 Exchange Rate: {price ? price.toFixed(6) : '0'} {outputToken} per {inputToken}
               </Form.Text>
+            </Row>
+
+            {/* Transaction Status - Permanent Area */}
+            <Row className='mt-3'>
+              <div style={{ 
+                padding: '12px 16px', 
+                background: isSwapping ? '#cfe2ff' : isSuccess && showAlert ? '#d1e7dd' : !isSuccess && showAlert ? '#f8d7da' : '#f8f9fa',
+                borderRadius: '8px',
+                textAlign: 'center',
+                color: isSwapping ? '#084298' : isSuccess && showAlert ? '#0f5132' : !isSuccess && showAlert ? '#842029' : '#6c757d',
+                fontSize: '14px',
+                border: `1px solid ${isSwapping ? '#9ec5fe' : isSuccess && showAlert ? '#badbcc' : !isSuccess && showAlert ? '#f5c2c7' : '#dee2e6'}`,
+                fontWeight: '500',
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {isSwapping ? (
+                  <span>⏳ Swap Pending...</span>
+                ) : isSuccess && showAlert ? (
+                  <div className="d-flex flex-column align-items-center">
+                    <span>✅ Swap Successful</span>
+                    {transactionHash && (
+                      <small className="mt-1">
+                        <a href={`https://etherscan.io/tx/${transactionHash}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                          View Transaction
+                        </a>
+                      </small>
+                    )}
+                  </div>
+                ) : !isSuccess && showAlert ? (
+                  <span>❌ Swap Failed</span>
+                ) : (
+                  <span>💡 Ready to swap</span>
+                )}
+              </div>
             </Row>
           </Form>
         ) : (
@@ -408,29 +462,6 @@ const Swap = () => {
           </p>
         )}
       </Card>
-
-      {isSwapping ? (
-        <Alert
-          message={'Swap Pending...'}
-          transactionHash={null}
-          variant={'info'}
-          setShowAlert={setShowAlert}
-        />
-      ) : isSuccess && showAlert ? (
-        <Alert
-          message={'Swap Successful'}
-          transactionHash={transactionHash}
-          variant={'success'}
-          setShowAlert={setShowAlert}
-        />
-      ) : !isSuccess && showAlert ? (
-        <Alert
-          message={'Swap Failed'}
-          transactionHash={null}
-          variant={'danger'}
-          setShowAlert={setShowAlert}
-        />
-      ) : null}
     </div>
   );
 }

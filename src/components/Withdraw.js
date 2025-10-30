@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
-import Button from 'react-bootstrap/Button';
-import Row from 'react-bootstrap/Row';
-import Spinner from 'react-bootstrap/Spinner';
-import Modal from 'react-bootstrap/Modal';
+import { 
+  Card, 
+  Form, 
+  InputGroup, 
+  Button, 
+  Row, 
+  Spinner,
+  Modal
+} from 'react-bootstrap'
 import { ethers } from 'ethers'
 
 import Alert from './Alert'
@@ -20,9 +22,10 @@ const Withdraw = () => {
   const [amount, setAmount] = useState('')
   const [showAlert, setShowAlert] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [selectedAMM, setSelectedAMM] = useState('amm1') // Default to AMM1
   const [estimatedAmounts, setEstimatedAmounts] = useState({ 
-    kel: '0', 
-    usd: '0',
+    token1: '0', 
+    token2: '0',
     poolPercentage: '0'
   })
 
@@ -32,10 +35,17 @@ const Withdraw = () => {
   const shares = useSelector(state => state.amm.shares)
 
   const tokens = useSelector(state => state.tokens.contracts)
+  const symbols = useSelector(state => state.tokens.symbols)
   const balances = useSelector(state => state.tokens.balances)
 
   const ammState = useSelector(state => state.amm)
-  const amm = ammState?.amm1?.contract
+  const amm = selectedAMM === 'amm1' ? ammState?.amm1?.contract : ammState?.amm2?.contract
+  
+  // Get token indices for selected AMM
+  // AMM1: ETH (index 1) / USD (index 0)
+  // AMM2: OP (index 2) / USD (index 0)
+  const token1Index = selectedAMM === 'amm1' ? 1 : 2  // ETH or OP
+  const token2Index = 0  // USD for both
   const isWithdrawing = useSelector(state => state.amm.withdrawing.isWithdrawing)
 
   const dispatch = useDispatch()
@@ -94,14 +104,14 @@ const Withdraw = () => {
     try {
       // Validate input
       if (!amm) {
-        setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+        setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
         return
       }
       
       // Convert to string and clean input
       const sharesStr = shares?.toString().trim() || '0'
       if (sharesStr === '' || sharesStr === '.' || isNaN(parseFloat(sharesStr)) || parseFloat(sharesStr) <= 0) {
-        setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+        setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
         return
       }
 
@@ -111,17 +121,17 @@ const Withdraw = () => {
         _shares = ethers.utils.parseUnits(sharesStr, 'ether')
       } catch (e) {
         console.error('Error parsing shares:', e)
-        setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+        setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
         return
       }
 
       // Calculate withdrawal amounts
-      let kelAmount, usdAmount
+      let token1Amount, token2Amount
       try {
-        [kelAmount, usdAmount] = await amm.calculateWithdrawAmount(_shares)
+        [token1Amount, token2Amount] = await amm.calculateWithdrawAmount(_shares)
       } catch (e) {
         console.error('Error calculating withdraw amounts:', e)
-        setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+        setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
         return
       }
       
@@ -139,13 +149,13 @@ const Withdraw = () => {
       
       // Update state with formatted values
       setEstimatedAmounts({
-        kel: formatTokenAmount(kelAmount, 6),
-        usd: formatTokenAmount(usdAmount, 6),
+        token1: formatTokenAmount(token1Amount, 6),
+        token2: formatTokenAmount(token2Amount, 6),
         poolPercentage: poolPercentage
       })
     } catch (error) {
       console.error('Error calculating estimated amounts:', error)
-      setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+      setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
     }
   }
 
@@ -156,7 +166,7 @@ const Withdraw = () => {
       
       // Don't calculate if empty or just a decimal point
       if (value === '' || value === '.') {
-        setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+        setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
         return
       }
       
@@ -165,17 +175,17 @@ const Withdraw = () => {
       if (!isNaN(numValue) && numValue > 0) {
         calculateEstimatedAmounts(value)
       } else {
-        setEstimatedAmounts({ kel: '0', usd: '0', poolPercentage: '0' })
+        setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
       }
     }
   }
 
   // Set max shares
   const setMaxShares = () => {
-    if (shares && shares.gt(0)) {
-      const formattedShares = ethers.utils.formatUnits(shares, 'ether')
-      setAmount(formattedShares)
-      calculateEstimatedAmounts(formattedShares)
+    if (shares && parseFloat(shares) > 0) {
+      // shares from Redux is already formatted as a string
+      setAmount(shares)
+      calculateEstimatedAmounts(shares)
     }
   }
 
@@ -280,6 +290,35 @@ const Withdraw = () => {
       <Card style={{ maxWidth: '450px' }} className='mx-auto px-4'>
         {account ? (
           <Form onSubmit={withdrawHandler} style={{ maxWidth: '450px', margin: '50px auto' }}>
+            
+            {/* Withdraw Info */}
+            <div className="text-center mb-3">
+              <h5 className="mb-1">💸 Withdraw Liquidity</h5>
+              <p style={{ fontSize: '14px', margin: 0, color: '#495057' }}>
+                Remove liquidity and collect your tokens plus fees
+              </p>
+            </div>
+            
+            {/* AMM Pool Selector */}
+            <Row className='my-3'>
+              <Form.Group>
+                <div>
+                  <Form.Label className="mb-1"><strong>Select Liquidity Pool</strong></Form.Label>
+                  <div style={{ fontSize: '13px', color: '#495057' }}>Select which pool to withdraw from</div>
+                </div>
+                <Form.Select 
+                  value={selectedAMM}
+                  onChange={(e) => {
+                    setSelectedAMM(e.target.value)
+                    setAmount('')
+                    setEstimatedAmounts({ token1: '0', token2: '0', poolPercentage: '0' })
+                  }}
+                >
+                  <option value="amm1">AMM1 - {symbols?.[1]}/{symbols?.[0]} (ETH/USD)</option>
+                  <option value="amm2">AMM2 - {symbols?.[2]}/{symbols?.[0]} (OP/USD)</option>
+                </Form.Select>
+              </Form.Group>
+            </Row>
 
             <Row>
               <Form.Text className='text-end my-2' muted>
@@ -289,11 +328,13 @@ const Withdraw = () => {
                 <Form.Control
                   type="number"
                   placeholder="0"
-                  min="0.000000000000000001"
-                  step="any"
+                  min="0"
+                  step="0.000001"
                   id="shares"
-                  value={amount}
+                  value={amount === 0 || amount === '' ? '' : amount}
                   onChange={(e) => handleAmountChange(e.target.value)}
+                  onFocus={(e) => e.target.value === '0' && setAmount('')}
+                  onBlur={(e) => !e.target.value && setAmount('')}
                   isInvalid={amount && (isNaN(amount) || amount <= 0)}
                   className="text-end"
                 />
@@ -331,16 +372,16 @@ const Withdraw = () => {
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <div className="d-flex align-items-center">
                       <div className="me-2" style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#0d6efd' }}></div>
-                      <span>KEL</span>
+                      <span>{symbols?.[token1Index] || 'Token1'}</span>
                     </div>
-                    <span className="fw-bold">{parseFloat(estimatedAmounts.kel).toFixed(4)}</span>
+                    <span className="fw-bold">{parseFloat(estimatedAmounts.token1).toFixed(4)}</span>
                   </div>
                   <div className="d-flex justify-content-between align-items-center">
                     <div className="d-flex align-items-center">
                       <div className="me-2" style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#198754' }}></div>
-                      <span>USD</span>
+                      <span>{symbols?.[token2Index] || 'Token2'}</span>
                     </div>
-                    <span className="fw-bold">{parseFloat(estimatedAmounts.usd).toFixed(4)}</span>
+                    <span className="fw-bold">{parseFloat(estimatedAmounts.token2).toFixed(4)}</span>
                   </div>
                 </div>
               )}
@@ -369,25 +410,62 @@ const Withdraw = () => {
               </Button>
             </Row>
 
+            {/* Transaction Status - Permanent Area */}
+            <Row className='mt-3'>
+              <div style={{ 
+                padding: '12px 16px', 
+                background: isWithdrawing ? '#cfe2ff' : showAlert?.variant === 'success' ? '#d1e7dd' : showAlert?.variant === 'danger' ? '#f8d7da' : '#f8f9fa',
+                borderRadius: '8px',
+                textAlign: 'center',
+                color: isWithdrawing ? '#084298' : showAlert?.variant === 'success' ? '#0f5132' : showAlert?.variant === 'danger' ? '#842029' : '#6c757d',
+                fontSize: '14px',
+                border: `1px solid ${isWithdrawing ? '#9ec5fe' : showAlert?.variant === 'success' ? '#badbcc' : showAlert?.variant === 'danger' ? '#f5c2c7' : '#dee2e6'}`,
+                fontWeight: '500',
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {isWithdrawing ? (
+                  <span>⏳ Withdrawal Pending...</span>
+                ) : showAlert?.variant === 'success' ? (
+                  <div className="d-flex flex-column align-items-center">
+                    <span>✅ Withdraw Successful</span>
+                    {showAlert.transactionHash && (
+                      <small className="mt-1">
+                        <a href={`https://etherscan.io/tx/${showAlert.transactionHash}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>
+                          View Transaction
+                        </a>
+                      </small>
+                    )}
+                  </div>
+                ) : showAlert?.variant === 'danger' ? (
+                  <span>❌ {showAlert.message || 'Withdrawal Failed'}</span>
+                ) : (
+                  <span>💡 Ready to withdraw</span>
+                )}
+              </div>
+            </Row>
+
             <hr />
 
             <Row className="mb-3">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <div className="d-flex align-items-center">
                   <div className="me-2" style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#0d6efd' }}></div>
-                  <span>KEL Balance:</span>
+                  <span>{symbols?.[token1Index] || 'Token1'} Balance:</span>
                 </div>
                 <span className="fw-bold">
-                  {balances && balances[0] ? formatTokenAmount(balances[0], 4) : '0'}
+                  {balances && balances[token1Index] ? formatTokenAmount(balances[token1Index], 4) : '0'}
                 </span>
               </div>
               <div className="d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center">
                   <div className="me-2" style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#198754' }}></div>
-                  <span>USD Balance:</span>
+                  <span>{symbols?.[token2Index] || 'Token2'} Balance:</span>
                 </div>
                 <span className="fw-bold">
-                  {balances && balances[1] ? formatTokenAmount(balances[1], 2) : '0'}
+                  {balances && balances[token2Index] ? formatTokenAmount(balances[token2Index], 2) : '0'}
                 </span>
               </div>
             </Row>
@@ -403,28 +481,6 @@ const Withdraw = () => {
           </p>
         )}
       </Card>
-
-      {showAlert?.show && (
-        <Alert 
-          message={
-            showAlert.variant === 'success' 
-              ? 'Withdraw Successful' 
-              : showAlert.variant === 'danger' 
-                ? `Error: ${showAlert.message}`
-                : showAlert.message
-          }
-          transactionHash={showAlert.transactionHash}
-          variant={showAlert.variant || 'info'}
-          setShowAlert={() => setShowAlert({ ...showAlert, show: false })}
-        />
-      )}
-      
-      {isWithdrawing && (
-        <div className="text-center my-3">
-          <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Processing withdrawal...</p>
-        </div>
-      )}
 
       {/* Confirmation Modal */}
       <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
@@ -447,17 +503,17 @@ const Withdraw = () => {
             <div className="d-flex justify-content-between align-items-center mb-2">
               <div className="d-flex align-items-center">
                 <div className="me-2" style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#0d6efd' }}></div>
-                <span>KEL</span>
+                <span>{symbols?.[token1Index] || 'Token1'}</span>
               </div>
-              <span className="fw-bold">{parseFloat(estimatedAmounts.kel).toFixed(4)}</span>
+              <span className="fw-bold">{parseFloat(estimatedAmounts.token1).toFixed(4)}</span>
             </div>
             
             <div className="d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center">
                 <div className="me-2" style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#198754' }}></div>
-                <span>USD</span>
+                <span>{symbols?.[token2Index] || 'Token2'}</span>
               </div>
-              <span className="fw-bold">{parseFloat(estimatedAmounts.usd).toFixed(4)}</span>
+              <span className="fw-bold">{parseFloat(estimatedAmounts.token2).toFixed(4)}</span>
             </div>
           </div>
 

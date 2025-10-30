@@ -1,0 +1,104 @@
+/* Modern Tab Styling */
+.modern-tab {
+  position: relative;
+  padding: 12px 24px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  background: white !important;
+  border: 2px solid #e9ecef !important;
+  color: #495057 !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.modern-tab:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2) !important;
+  border-color: #667eea !important;
+  background: rgba(102, 126, 234, 0.05) !important;
+}
+
+.modern-tab.active {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: white !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+.modern-tab.active .tab-icon {
+  animation: bounce 0.6s ease;
+}
+
+.tab-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tab-text {
+  line-height: 1;
+}
+
+/* Special styling for Aggregator tab */
+.aggregator-tab {
+  border: 2px solid #667eea !important;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)) !important;
+}
+
+.aggregator-tab:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)) !important;
+  border-color: #764ba2 !important;
+}
+
+.aggregator-tab.active {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  border-color: transparent !important;
+}
+
+.badge-pill {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 4px;
+}
+
+.aggregator-tab.active .badge-pill {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+/* Bounce animation for active tab icon */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .modern-tab {
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+  }
+  
+  .tab-icon {
+    font-size: 16px;
+  }
+  
+  .badge-pill {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+}

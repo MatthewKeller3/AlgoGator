@@ -15,11 +15,14 @@ const Charts = () => {
   const provider = useSelector(state => state.provider.connection);
   const tokens = useSelector(state => state.tokens.contracts);
   const symbols = useSelector(state => state.tokens.symbols);
-  const amm = useSelector(state => state.amm.contract);
+  const ammState = useSelector(state => state.amm);
+  const amm1 = ammState?.amm1?.contract;
+  const amm2 = ammState?.amm2?.contract;
   const chart = useSelector(chartSelector);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedAMM, setSelectedAMM] = useState('both'); // 'amm1', 'amm2', or 'both'
   const [chartData, setChartData] = useState({
     series: [...initialSeries],
     options: { ...options }
@@ -145,17 +148,33 @@ const Charts = () => {
   // Load swap data
   useEffect(() => {
     const fetchData = async () => {
-      if (provider && amm) {
+      if (provider && (amm1 || amm2)) {
         try {
           setLoading(true);
           setError(null);
-          await loadAllSwaps(provider, amm, dispatch);
+          
+          // Load swaps from both AMMs
+          const promises = [];
+          if (amm1) {
+            console.log('Loading swaps from AMM1');
+            promises.push(loadAllSwaps(provider, amm1, dispatch));
+          }
+          if (amm2) {
+            console.log('Loading swaps from AMM2');
+            promises.push(loadAllSwaps(provider, amm2, dispatch));
+          }
+          
+          await Promise.all(promises);
+          console.log('Swap data loaded successfully');
         } catch (err) {
           console.error('Error loading swap data:', err);
           setError('Failed to load swap data. Please try again later.');
         } finally {
           setLoading(false);
         }
+      } else {
+        console.log('Provider or AMM contracts not available yet');
+        setLoading(false);
       }
     };
 
@@ -165,7 +184,7 @@ const Charts = () => {
     const interval = setInterval(fetchData, 30000); // Refresh every 30 seconds
     
     return () => clearInterval(interval);
-  }, [provider, amm, dispatch]);
+  }, [provider, amm1, amm2, dispatch]);
 
   if (loading) {
     return <Loading />;
@@ -181,10 +200,13 @@ const Charts = () => {
               <div className="mb-4">
                 <h4>Trading History</h4>
                 <p className="text-muted mb-0">
-                  {symbols?.[0] && symbols[1] 
-                    ? `Showing price history for ${symbols[0]}/${symbols[1]}`
-                    : 'Loading token information...'}
+                  Tracking swaps from AMM1 (ETH/USD) and AMM2 (OP/USD)
                 </p>
+                {chart?.swaps && (
+                  <small className="text-muted">
+                    {chart.swaps.length} total swap{chart.swaps.length !== 1 ? 's' : ''} recorded
+                  </small>
+                )}
               </div>
               
               {error ? (
@@ -203,9 +225,20 @@ const Charts = () => {
                       height="400"
                     />
                   ) : (
-                    <div className="alert alert-info">
-                      <i className="bi bi-info-circle-fill me-2"></i>
-                      No trading data available. Perform some swaps to see the chart.
+                    <div className="text-center py-5">
+                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+                      <h5 className="mb-2">No Trading Data Yet</h5>
+                      <p className="text-muted mb-3">
+                        Start trading to see price history and charts
+                      </p>
+                      <div className="d-flex gap-2 justify-content-center">
+                        <a href="#/swap" className="btn btn-sm btn-primary">
+                          Make a Swap
+                        </a>
+                        <a href="#/aggregator" className="btn btn-sm btn-outline-primary">
+                          Use Aggregator
+                        </a>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -219,7 +252,14 @@ const Charts = () => {
                 <h4 className="mb-0">Recent Trades</h4>
                 <button 
                   className="btn btn-sm btn-outline-secondary"
-                  onClick={() => loadAllSwaps(provider, amm, dispatch)}
+                  onClick={async () => {
+                    setLoading(true);
+                    const promises = [];
+                    if (amm1) promises.push(loadAllSwaps(provider, amm1, dispatch));
+                    if (amm2) promises.push(loadAllSwaps(provider, amm2, dispatch));
+                    await Promise.all(promises);
+                    setLoading(false);
+                  }}
                   disabled={loading}
                 >
                   {loading ? 'Refreshing...' : 'Refresh'}
@@ -292,9 +332,10 @@ const Charts = () => {
                         })
                     ) : (
                       <tr>
-                        <td colSpan="6" className="text-center py-4">
-                          <div className="text-muted">No trading history found</div>
-                          <small className="text-muted">Perform some swaps to see them here</small>
+                        <td colSpan="6" className="text-center py-5">
+                          <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔄</div>
+                          <div className="fw-bold mb-1">No Trading History</div>
+                          <small className="text-muted">Make your first swap to see transaction history</small>
                         </td>
                       </tr>
                     )}

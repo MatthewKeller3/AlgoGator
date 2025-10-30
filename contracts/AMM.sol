@@ -5,9 +5,14 @@ import "hardhat/console.sol";
 import "./Token.sol";
 import "./interfaces/IAMM.sol";
 
+/**
+ * @title AMM
+ * @notice Automated Market Maker using constant product formula (x * y = k)
+ * @dev Implements liquidity provision, token swaps, and LP share management
+ */
 contract AMM is IAMM {
-    Token private _token1;
-    Token private _token2;
+    Token private immutable _token1;
+    Token private immutable _token2;
 
     uint256 public token1Balance;
     uint256 public token2Balance;
@@ -15,7 +20,7 @@ contract AMM is IAMM {
 
     uint256 public totalShares;
     mapping(address => uint256) public shares;
-    uint256 constant PRECISION = 10**18;
+    uint256 private constant PRECISION = 10**18;
 
     event Swap(
         address user,
@@ -33,6 +38,12 @@ contract AMM is IAMM {
         _token2 = _token2Param;
     }
 
+    /**
+     * @notice Adds liquidity to the pool
+     * @param _token1Amount Amount of token1 to deposit
+     * @param _token2Amount Amount of token2 to deposit
+     * @dev Mints LP shares proportional to the deposit
+     */
     function addLiquidity(uint256 _token1Amount, uint256 _token2Amount) external {
         // Deposit Tokens
         require(
@@ -70,7 +81,11 @@ contract AMM is IAMM {
         shares[msg.sender] += share;
     }
 
-    // Determine how many token2 tokens must be deposited when depositing liquidity for token1
+    /**
+     * @notice Calculates required token2 amount for a given token1 deposit
+     * @param _token1Amount Amount of token1 to deposit
+     * @return token2Amount Required amount of token2 to maintain pool ratio
+     */
     function calculateToken2Deposit(uint256 _token1Amount)
         public
         view
@@ -79,7 +94,11 @@ contract AMM is IAMM {
         token2Amount = (token2Balance * _token1Amount) / token1Balance;
     }
 
-    // Determine how many token1 tokens must be deposited when depositing liquidity for token2
+    /**
+     * @notice Calculates required token1 amount for a given token2 deposit
+     * @param _token2Amount Amount of token2 to deposit
+     * @return token1Amount Required amount of token1 to maintain pool ratio
+     */
     function calculateToken1Deposit(uint256 _token2Amount)
         public
         view
@@ -88,7 +107,11 @@ contract AMM is IAMM {
         token1Amount = (token1Balance * _token2Amount) / token2Balance;
     }
 
-    // Returns amount of token2 received when swapping token1
+    /**
+     * @notice Calculates output amount for token1 -> token2 swap
+     * @param _token1Amount Amount of token1 to swap
+     * @return token2Amount Expected amount of token2 to receive
+     */
     function calculateToken1Swap(uint256 _token1Amount)
         public
         view
@@ -106,6 +129,11 @@ contract AMM is IAMM {
         require(token2Amount < token2Balance, "swap amount to large");
     }
 
+    /**
+     * @notice Executes token1 -> token2 swap
+     * @param _token1Amount Amount of token1 to swap
+     * @return token2Amount Actual amount of token2 received
+     */
     function swapToken1(uint256 _token1Amount)
         external
         returns(uint256 token2Amount)
@@ -132,7 +160,11 @@ contract AMM is IAMM {
         );
     }
 
-    // Returns amount of token1 received when swapping token2
+    /**
+     * @notice Calculates output amount for token2 -> token1 swap
+     * @param _token2Amount Amount of token2 to swap
+     * @return token1Amount Expected amount of token1 to receive
+     */
     function calculateToken2Swap(uint256 _token2Amount)
         public
         view
@@ -150,6 +182,11 @@ contract AMM is IAMM {
         require(token1Amount < token1Balance, "swap amount to large");
     }
 
+    /**
+     * @notice Executes token2 -> token1 swap
+     * @param _token2Amount Amount of token2 to swap
+     * @return token1Amount Actual amount of token1 received
+     */
     function swapToken2(uint256 _token2Amount)
         external
         returns(uint256 token1Amount)
@@ -176,7 +213,12 @@ contract AMM is IAMM {
         );
     }
 
-    // Determine how many tokens will be withdrawn
+    /**
+     * @notice Calculates token amounts for a given share withdrawal
+     * @param _share Amount of LP shares to burn
+     * @return token1Amount Amount of token1 to receive
+     * @return token2Amount Amount of token2 to receive
+     */
     function calculateWithdrawAmount(uint256 _share)
         public
         view
@@ -187,7 +229,12 @@ contract AMM is IAMM {
         token2Amount = (_share * token2Balance) / totalShares;
     }
 
-    // Removes liquidity from the pool
+    /**
+     * @notice Removes liquidity from the pool
+     * @param _share Amount of LP shares to burn
+     * @return token1Amount Amount of token1 withdrawn
+     * @return token2Amount Amount of token2 withdrawn
+     */
     function removeLiquidity(uint256 _share)
         external
         returns(uint256 token1Amount, uint256 token2Amount)
@@ -210,20 +257,36 @@ contract AMM is IAMM {
         _token2.transfer(msg.sender, token2Amount);
     }
 
-    // Interface implementation - used by aggregator
+    /**
+     * @notice Gets estimated token1 output for a token2 input (used by aggregator)
+     * @param _token2Amount Amount of token2 to swap
+     * @return Expected amount of token1 to receive
+     */
     function getToken1EstimatedReturn(uint256 _token2Amount) external view returns (uint256) {
         return calculateToken2Swap(_token2Amount);
     }
     
+    /**
+     * @notice Gets estimated token2 output for a token1 input (used by aggregator)
+     * @param _token1Amount Amount of token1 to swap
+     * @return Expected amount of token2 to receive
+     */
     function getToken2EstimatedReturn(uint256 _token1Amount) external view returns (uint256) {
         return calculateToken1Swap(_token1Amount);
     }
 
-    // Interface implementation - return addresses
+    /**
+     * @notice Returns the address of token1
+     * @return Address of token1 contract
+     */
     function token1() external view override returns (address) {
         return address(_token1);
     }
 
+    /**
+     * @notice Returns the address of token2
+     * @return Address of token2 contract
+     */
     function token2() external view override returns (address) {
         return address(_token2);
     }
